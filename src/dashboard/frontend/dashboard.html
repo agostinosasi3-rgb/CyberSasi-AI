@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>CyberSasi AI Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+  * { box-sizing: border-box; font-family: -apple-system, Segoe UI, Roboto, Arial, sans-serif; }
+  body { margin: 0; background: #0f172a; color: #e2e8f0; padding: 24px; }
+  .container { max-width: 1100px; margin: 0 auto; }
+  h1 { color: #38bdf8; }
+  .config { margin-bottom: 16px; }
+  .config input { padding: 6px 10px; border-radius: 6px; border: 1px solid #334155; background: #1e293b; color: #e2e8f0; width: 260px; }
+  .config button { padding: 6px 14px; border-radius: 6px; border: none; background: #38bdf8; color: #0f172a; font-weight: bold; cursor: pointer; margin-left: 8px; }
+  .cards { display: flex; gap: 16px; margin-bottom: 24px; flex-wrap: wrap; }
+  .card { background: #1e293b; padding: 16px; border-radius: 8px; flex: 1; min-width: 150px; }
+  .card .label { font-size: 14px; color: #94a3b8; }
+  .card .value { font-size: 32px; font-weight: bold; }
+  .panel { background: #1e293b; padding: 16px; border-radius: 8px; margin-bottom: 24px; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { padding: 8px; text-align: left; border-bottom: 1px solid #334155; }
+  th { color: #94a3b8; }
+  .malicious { color: #f87171; }
+  .normal { color: #4ade80; }
+  .error-box { background: #7f1d1d; padding: 12px; border-radius: 8px; margin-bottom: 16px; display: none; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>CyberSasi AI — Network Security Dashboard</h1>
+
+  <div class="config">
+    API URL:
+    <input id="apiUrl" value="http://localhost:8000" />
+    <button onclick="fetchData()">Refresh</button>
+  </div>
+
+  <div class="error-box" id="errorBox"></div>
+
+  <div class="cards">
+    <div class="card"><div class="label">Total Events</div><div class="value" id="totalEvents" style="color:#38bdf8">0</div></div>
+    <div class="card"><div class="label">Malicious</div><div class="value" id="maliciousCount" style="color:#f87171">0</div></div>
+    <div class="card"><div class="label">Normal</div><div class="value" id="normalCount" style="color:#4ade80">0</div></div>
+    <div class="card"><div class="label">Blocked IPs</div><div class="value" id="blockedCount" style="color:#facc15">0</div></div>
+  </div>
+
+  <div class="panel">
+    <h2>Traffic Confidence Over Time</h2>
+    <canvas id="confidenceChart" height="100"></canvas>
+  </div>
+
+  <div class="panel">
+    <h2>Recent Alerts</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Time</th><th>Source IP</th><th>Destination IP</th><th>Protocol</th><th>Label</th><th>Confidence</th><th>Action</th>
+        </tr>
+      </thead>
+      <tbody id="alertsBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+let chart = null;
+
+async function fetchData() {
+  const base = document.getElementById('apiUrl').value.replace(/\/$/, '');
+  const errorBox = document.getElementById('errorBox');
+  try {
+    const [alertsRes, statsRes] = await Promise.all([
+      fetch(base + '/alerts?limit=20'),
+      fetch(base + '/stats')
+    ]);
+    if (!alertsRes.ok || !statsRes.ok) throw new Error('API returned error');
+    const alerts = await alertsRes.json();
+    const stats = await statsRes.json();
+
+    errorBox.style.display = 'none';
+
+    document.getElementById('totalEvents').textContent = stats.total_events;
+    document.getElementById('maliciousCount').textContent = stats.malicious_count;
+    document.getElementById('normalCount').textContent = stats.normal_count;
+    document.getElementById('blockedCount').textContent = stats.blocked_ips.length;
+
+    const tbody = document.getElementById('alertsBody');
+    tbody.innerHTML = '';
+    alerts.forEach(a => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${new Date(a.timestamp).toLocaleString()}</td>
+        <td>${a.src_ip}</td>
+        <td>${a.dst_ip}</td>
+        <td>${a.protocol}</td>
+        <td class="${a.label}">${a.label}</td>
+        <td>${a.confidence}</td>
+        <td>${a.action_taken}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+
+    const labels = alerts.map(a => new Date(a.timestamp).toLocaleTimeString()).reverse();
+    const data = alerts.map(a => a.confidence).reverse();
+
+    if (chart) {
+      chart.data.labels = labels;
+      chart.data.datasets[0].data = data;
+      chart.update();
+    } else {
+      const ctx = document.getElementById('confidenceChart').getContext('2d');
+      chart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: 'Confidence (malicious score)',
+            data: data,
+            borderColor: '#f87171',
+            backgroundColor: 'rgba(248,113,113,0.2)',
+            tension: 0.3
+          }]
+        },
+        options: {
+          scales: {
+            y: { min: 0, max: 1, ticks: { color: '#94a3b8' }, grid: { color: '#334155' } },
+            x: { ticks: { color: '#94a3b8' }, grid: { color: '#334155' } }
+          },
+          plugins: { legend: { labels: { color: '#e2e8f0' } } }
+        }
+      });
+    }
+  } catch (err) {
+    errorBox.textContent = 'Unable to reach CyberSasi AI API at ' + base + '. Is the backend running? (' + err.message + ')';
+    errorBox.style.display = 'block';
+  }
+}
+
+fetchData();
+setInterval(fetchData, 5000);
+</script>
+</body>
+</html>
