@@ -1,11 +1,15 @@
 # CyberSasi AI — Intelligent Network Intrusion Detection & Auto-Response System
 
 **Full Project Name:** CyberSasi AI: An AI-Powered Network Intrusion Detection and Automated Response System for Institutions
+---
+**Programmer:** Agostino Joseph Sasi
 
-**Author:** [Your Full Name]
-**Program:** Bachelor of Science in Information and Computer Network (ICN)
-**Institution:** Mbeya University of Science and Technology (MUST)
-**Academic Year:** 2025/2026 — Final Year Project (I & II)
+**Education:** Bachelor of Computer Network Egineering (CNE)
+
+**Institution:** Mbeya University of Science and Technology (MUST)-Tanzania
+
+
+---
 
 ---
 
